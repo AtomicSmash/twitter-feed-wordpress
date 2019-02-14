@@ -1,0 +1,19 @@
+{
+  "name": "atomicsmash/apis",
+  "description": "Atomic Smash - Atomis APIS",
+  "keywords": ["wordpress", "plugin", "apis", "Twitter"],
+  "homepage": "http://www.atomicsmash.co.uk/",
+  "authors": [
+    {
+      "name": "Atomic Smash Apis",
+      "email": "mail@atomicsmash.co.uk",
+      "homepage": "http://www.atomicsmash.co.uk/"
+    }
+  ],
+  "type": "wordpress-plugin",
+  "require": {
+      "composer/installers": "v1.0.6",
+      "guzzlehttp/guzzle": "6.2.1",
+      "guzzlehttp/oauth-subscriber": "0.3.*"
+  }
+}
