@@ -73,8 +73,10 @@ class atomic_api {
             user_name varchar(26) NOT NULL,
             user_handle varchar(26) NOT NULL,
     		user_image varchar(130) NOT NULL,
-            user_location varchar(130) NOT NULL,
-            entities LONGTEXT NOT NULL,
+            hashtags LONGTEXT NOT NULL,
+            symbols LONGTEXT NOT NULL,
+            user_mentions LONGTEXT NOT NULL,
+            urls LONGTEXT NOT NULL,
             hidden BOOLEAN NOT NULL,
     		UNIQUE KEY id (id)
     	) $charset_collate;";
@@ -401,7 +403,7 @@ class atomic_api {
 		global $wpdb;
 		$wpdb->show_errors();
 
-
+		//ASTODO this is a dupe of update
 		$wpdb->insert($this->api_table,
 			array(
 				'id' => $entry->id,																				// d
@@ -412,12 +414,14 @@ class atomic_api {
 				'user_name' => html_entity_decode(stripslashes($entry->user->name), ENT_QUOTES),				// s
 				'user_handle' => html_entity_decode(stripslashes($entry->user->screen_name), ENT_QUOTES),		// s
 				'user_image' => html_entity_decode(stripslashes($entry->user->profile_image_url), ENT_QUOTES),	// s
-				'user_location' => html_entity_decode(stripslashes($entry->user->location), ENT_QUOTES),		// s
-				'entities' => html_entity_decode(stripslashes( serialize( $entry->entities ) ), ENT_QUOTES),					// s
-				'hidden' => 0,				// d
+				'hashtags' => html_entity_decode(stripslashes( serialize( $entry->entities->hashtags ) ), ENT_QUOTES),	// s
+				'symbols' => html_entity_decode(stripslashes( serialize( $entry->entities->symbols ) ), ENT_QUOTES),	// s
+				'user_mentions' => html_entity_decode(stripslashes( serialize( $entry->entities->user_mentions ) ), ENT_QUOTES),	// s
+				'urls' => html_entity_decode(stripslashes( serialize( $entry->entities->urls ) ), ENT_QUOTES),	// s
+				'hidden' => 1,																					// d
 			),
 			array(
-				'%d', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%d'
+				'%d', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d'
 			)
 		);
 
@@ -429,23 +433,11 @@ class atomic_api {
 		global $wpdb;
 		$wpdb->show_errors();
 
-		echo "<pre>";
-		print_r($entry->entities['hashtags']);
-		echo "</pre>";
-		echo "<pre>";
-		print_r($entry->entities['symbols']);
-		echo "</pre>";
-		echo "<pre>";
-		print_r($entry->entities['user_mentions']);
-		echo "</pre>";
-		echo "<pre>";
-		print_r($entry->entities['urls']);
-		echo "</pre>";
+		//
+		// echo "<pre>";
+		// print_r(html_entity_decode(stripslashes( $entry->entities->user_mentions ) )));
+		// echo "</pre>";
 
-
-
-
-		die();
 
 
 		$wpdb->update($this->api_table,
@@ -453,20 +445,22 @@ class atomic_api {
 				'id' => $entry->id,																				// d
 				'tweet' => html_entity_decode(stripslashes($entry->full_text), ENT_QUOTES),							// s
 				'created_at' => date( "Y-m-d H:i:s", strtotime($entry->created_at)),							// s
-				'updated_at' => date( "Y-m-d H:i:s", (time())),													// s
+				'updated_at' => date( "Y-m-d H:i:s", time()),													// s
 				'user_id' => html_entity_decode($entry->user->id,ENT_QUOTES),									// d
 				'user_name' => html_entity_decode(stripslashes($entry->user->name), ENT_QUOTES),				// s
 				'user_handle' => html_entity_decode(stripslashes($entry->user->screen_name), ENT_QUOTES),		// s
 				'user_image' => html_entity_decode(stripslashes($entry->user->profile_image_url), ENT_QUOTES),	// s
-				'user_location' => html_entity_decode(stripslashes($entry->user->location), ENT_QUOTES),		// s
-				'entities' => html_entity_decode(stripslashes( serialize( $entry->entities ) ), ENT_QUOTES),					// s
+				'hashtags' => html_entity_decode(stripslashes( serialize( $entry->entities->hashtags ) ), ENT_QUOTES),	// s
+				'symbols' => html_entity_decode(stripslashes( serialize( $entry->entities->symbols ) ), ENT_QUOTES),	// s
+				'user_mentions' => html_entity_decode(stripslashes( serialize( $entry->entities->user_mentions ) ), ENT_QUOTES),	// s
+				'urls' => html_entity_decode(stripslashes( serialize( $entry->entities->user_mentions ) ), ENT_QUOTES),	// s
 				'hidden' => 1,																					// d
 			),
 			array(
                 'id' => $entry->id
             ),
 			array(
-				'%d', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%d'
+				'%d', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d'
 			),
 			array(
                 '%d'
