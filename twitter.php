@@ -528,7 +528,7 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 //Use this page as a ref: http://wpengineer.com/2426/wp_list_table-a-step-by-step-guide/
 //Need to sort pagination
 
-class Atomic_Api_List_Table extends Atomic_List_Table {
+class Atomic_Api_List_Table extends Twitter_Wordpress_List_Table {
 
 	function __construct($columns = array()){
 

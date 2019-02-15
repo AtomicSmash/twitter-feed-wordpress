@@ -2,7 +2,7 @@
 // http://codex.wordpress.org/Function_Reference/WP_List_Table
 // Base class for displaying a list of items in an ajaxified HTML table.
 
-class Atomic_List_Table {
+class Twitter_Wordpress_List_Table {
 
 	/**
 	 * The current list of items
@@ -188,7 +188,7 @@ class Atomic_List_Table {
 	 * @access public
 	 */
 	function no_items() {
-		_e( 'No items found.' );
+		_e( 'No tweets found.' );
 	}
 
 	/**
