@@ -337,7 +337,9 @@ class atomic_api {
 				return "| Not yet synced";
 			}else{
 
-				return "| Synced ".$this->human_elapsed_time( strtotime( $last_synced ) );
+				$time_diff = human_time_diff( $last_synced );
+
+				return "| Synced " . $time_diff . " ago";
 			}
 		}
 	}
