@@ -6,16 +6,12 @@ use GuzzleHttp\Subscriber\Oauth\Oauth1;
 
 class atomic_api {
 
-
 	public $type = '';
-	//These need checking
 	public $recordArray = array();
 	public $totalRecords = 0;
 	public $pageRecords = 0;
 	public $resultsPerPage = 15;
-	//ATOMICTODO - this needs to be dynamic
 	public $api_table = "";
-
 
 	//Variables for later use
 	public $id;
@@ -41,8 +37,6 @@ class atomic_api {
         //$this->setupMenus();
         add_action( 'admin_menu', array( $this, 'setupMenus') );
 
-		add_action( 'api_hourly_sync',  array($this,'pull' ));
-
 	}
 
 	/**
@@ -51,13 +45,10 @@ class atomic_api {
 	 */
 	function create_table() {
 
-		wp_schedule_event( time(), 'hourly', 'api_hourly_sync' );
-
     	global $wpdb;
     	$charset_collate = $wpdb->get_charset_collate();
 
         require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
-
 
         $table_name = $wpdb->prefix . 'twitter_cache';
         $sql = "CREATE TABLE $table_name (
@@ -88,16 +79,14 @@ class atomic_api {
 
 	function delete_table() {
 
-	    wp_clear_scheduled_hook('my_hourly_event');
+		global $wpdb;
+    	$charset_collate = $wpdb->get_charset_collate();
+		require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 
-		// global $wpdb;
-    	// $charset_collate = $wpdb->get_charset_collate();
-		//
-		//
-        // $table_name = $wpdb->prefix . 'api_twitter';
-        // $sql = "DROP TABLE $table_name";
-		//
-        // dbDelta( $sql );
+        $table_name = $wpdb->prefix . 'api_twitter';
+        $sql = "DROP TABLE $table_name";
+
+        dbDelta( $sql );
 
 		return true;
 
@@ -141,26 +130,19 @@ class atomic_api {
 
 			}else{
 
-
 				if(isset($_GET['sync'])){
 					$this->pull();
 				};
 
 	            $entries = $this->get();
 
-
 		    	$placeListTable = new Atomic_Api_List_Table($this->columns);
 
-	            echo '<h2>Twitter API <a href="admin.php?page=atomic_apis&sync=1" class="add-new-h2">Sync</a></h2>';
+	            echo '<h2>Twitter API '. $this->sync_log( true ) .' <a href="admin.php?page=atomic_apis&sync=1" class="add-new-h2">Sync</a></h2>';
 
 		    	$placeListTable->prepare_items();
 
 	            $placeListTable->items = $this->recordArray;
-
-
-
-
-	            //$placeListTable->items = $example_data;
 
 				?>
 				<form id="items-filter" method="get">
@@ -212,9 +194,6 @@ class atomic_api {
         } else {
             $limitSql = "";
         }
-
-        //$whereSqlLines[] = $wpdb->prepare("l.somthing='%d'", $query_args['id']);
-        //$whereSqlLines[] = "";
 
         // Text search filter
         if ($query_args['keyword']) {
@@ -304,7 +283,6 @@ class atomic_api {
 	 */
     public function pull() {
 
-
 		$stack = HandlerStack::create();
 
 		$middleware = new Oauth1([
@@ -314,7 +292,6 @@ class atomic_api {
 			'token_secret'  => TWITTER_OAUTH_TOKEN_SECRET
 		]);
 
-
 		$stack->push($middleware);
 
 		$client = new Client([
@@ -323,17 +300,21 @@ class atomic_api {
 		]);
 
 		// Pull from hashtag if it's defined
-		if( defined('TWITTER_HASHTAG') ){
-			$response = $client->get('search/tweets.json?q='.urlencode( '#'.TWITTER_HASHTAG ), ['auth' => 'oauth']);
-			$tweets = $response->getBody()->getContents();
-			$decodedContent = json_decode($tweets);
-			// Search results return a slightly different object
-			$decodedContent = $decodedContent->statuses;
-		}else{
-			$response = $client->get('statuses/user_timeline.json?tweet_mode=extended', ['auth' => 'oauth']);
-			$tweets = $response->getBody()->getContents();
-			$decodedContent = json_decode($tweets);
-		}
+		// if( defined('TWITTER_HASHTAG') ){
+		// 	$response = $client->get('search/tweets.json?q='.urlencode( '#'.TWITTER_HASHTAG ), ['auth' => 'oauth']);
+		// 	$tweets = $response->getBody()->getContents();
+		// 	$decodedContent = json_decode($tweets);
+		// 	// Search results return a slightly different object
+		// 	$decodedContent = $decodedContent->statuses;
+		// }else{
+			// $response = $client->get('statuses/user_timeline.json?tweet_mode=extended', ['auth' => 'oauth']);
+			// $tweets = $response->getBody()->getContents();
+			// $decodedContent = json_decode($tweets);
+		// }
+
+		$response = $client->get('statuses/user_timeline.json?tweet_mode=extended', ['auth' => 'oauth']);
+		$tweets = $response->getBody()->getContents();
+		$decodedContent = json_decode($tweets);
 
 		foreach ($decodedContent as $key => $entry) {
 
@@ -341,8 +322,24 @@ class atomic_api {
 
 		};
 
+		update_option( 'twitter_last_synced', date( 'U' ) );
+
 		return $decodedContent;
 
+	}
+
+	public function sync_log( $output = false ){
+
+		if( $output != false ){
+			$last_synced = get_option( 'twitter_last_synced' );
+
+			if( $last_synced === false ){
+				return "| Not yet synced";
+			}else{
+
+				return "| Synced ".$this->human_elapsed_time( strtotime( $last_synced ) );
+			}
+		}
 	}
 
 
@@ -419,13 +416,6 @@ class atomic_api {
 
 		global $wpdb;
 		$wpdb->show_errors();
-
-		//
-		// echo "<pre>";
-		// print_r(html_entity_decode(stripslashes( $entry->entities->user_mentions ) )));
-		// echo "</pre>";
-
-
 
 		$wpdb->update($this->api_table,
 			array(
@@ -509,19 +499,15 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
      *
      * wp atomicsmash create_dates_varient todayÊ
      */
-    class AS_API_CLI extends WP_CLI_Command {
-
-
+    class TWITTER_CLI extends WP_CLI_Command {
         public function sync_tweets($order_id = ""){
 			global $twitterAPI;
 
 			$twitterAPI->pull();
-
-
         }
     }
 
-    WP_CLI::add_command( 'APIs', 'AS_API_CLI' );
+    WP_CLI::add_command( 'Twiiter', 'TWITTER_CLI' );
 
 }
 
@@ -558,7 +544,6 @@ class Atomic_Api_List_Table extends Twitter_Wordpress_List_Table {
             return $item[ $column_name ]; //Show the whole array for troubleshooting purposes
         }
 	}
-
 
 	// Prep data for display
 	function prepare_items() {

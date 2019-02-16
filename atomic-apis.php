@@ -3,7 +3,7 @@
 Plugin Name: Twitter for WordPress
 Plugin URI: http://www.atomicsmash.co.uk
 Description: Pull from Twitter API and cache
-Version: 0.0.1
+Version: 0.1.0
 Author: Atomic Smash
 Author URI: n/a
 */
@@ -26,8 +26,8 @@ include('twitter.php');
 
 $twitterAPI = new atomic_api();
 
-register_activation_hook( __FILE__, array ( $twitterAPI, 'create_table' ) );
-register_deactivation_hook( __FILE__, array ( $twitterAPI, 'delete_table' ) );
+register_activation_hook( __FILE__, array ( $twitterAPI , 'create_table' ) );
+// register_deactivation_hook( __FILE__, array ( $twitterAPI, 'delete_table' ) );
 
 function baseMenuPage() {
 
