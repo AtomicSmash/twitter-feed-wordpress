@@ -35,11 +35,8 @@ class atomic_api {
 
         $this->columns =  array(
             'tweet'    => 'Tweet',
-            'user_handle'      => 'Username',
-            'user_image'      => 'Profile Image',
-            'user_location'      => 'Location'
+            'user_handle'      => 'Username'
         );
-
 
         //$this->setupMenus();
         add_action( 'admin_menu', array( $this, 'setupMenus') );
@@ -66,6 +63,7 @@ class atomic_api {
         $sql = "CREATE TABLE $table_name (
             id BIGINT(20) NOT NULL,
             tweet text,
+            tweet_type varchar(26) NOT NULL,
             added_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             created_at TIMESTAMP NOT NULL,
             updated_at TIMESTAMP NOT NULL,
@@ -77,6 +75,7 @@ class atomic_api {
             symbols LONGTEXT NOT NULL,
             user_mentions LONGTEXT NOT NULL,
             urls LONGTEXT NOT NULL,
+            media LONGTEXT NOT NULL,
             hidden BOOLEAN NOT NULL,
     		UNIQUE KEY id (id)
     	) $charset_collate;";
@@ -188,8 +187,6 @@ class atomic_api {
         $default_args['orderby'] = 'id';
         $default_args['order'] = 'desc';
 
-
-
         // Merge query args with defaults, keeping only items that have keys in defaults
         $query_args = array_intersect_key($query_args + $default_args, $default_args);
 
@@ -248,15 +245,6 @@ class atomic_api {
 
         $fullSql = $mainSql . ' ' . $whereSql . ' ' . $groupSql . ' ' . $orderSql . ' ' .$limitSql;
 
-		// echo $whereSql."<br>";
-		//echo $fullSql;
-		//
-		// echo "<pre>";
-		// print_r($whereSqlLines);
-		// echo "</pre>";
-
-
-
 		$wpdb->show_errors();
         $this->recordArray = $wpdb->get_results($fullSql , 'ARRAY_A');
 		// $this->recordArray = $wpdb->get_results($fullSql);
@@ -266,23 +254,25 @@ class atomic_api {
 			foreach($this->recordArray as $key => $tweet){
 				$this->recordArray[$key]['human_time_ago'] = $this->human_elapsed_time($this->recordArray[$key]['created_at']);
 				$this->recordArray[$key]['tweet_with_links'] = $this->linkify($this->recordArray[$key]['tweet']);
-
-
+				$this->recordArray[$key]['hashtags'] = unserialize( $this->recordArray[$key]['hashtags'] );
+				$this->recordArray[$key]['symbols'] = unserialize( $this->recordArray[$key]['symbols'] );
+				$this->recordArray[$key]['user_mentions'] = unserialize( $this->recordArray[$key]['user_mentions'] );
+				$this->recordArray[$key]['urls'] = unserialize( $this->recordArray[$key]['urls'] );
+				$this->recordArray[$key]['media'] = unserialize( $this->recordArray[$key]['media'] );
 			}
 		}
 
 		return $this->recordArray;
 
-        $this->pageRecords = count($this->recordArray);
+        // $this->pageRecords = count($this->recordArray);
 
-		// If we have fewer than the max records on the first page, we can use that as the total
-		if ($page=0 && ($this->pageRecords < $this->resultsPerPage)) {
-			$this->totalRecords = $this->pageRecords;
-		} else {
-			// Otherwise we need to work it out
-			$this->totalRecords = $wpdb->get_var($countSql . $whereSql);
-		}
-
+		// // If we have fewer than the max records on the first page, we can use that as the total
+		// if ($page=0 && ($this->pageRecords < $this->resultsPerPage)) {
+		// 	$this->totalRecords = $this->pageRecords;
+		// } else {
+		// 	// Otherwise we need to work it out
+		// 	$this->totalRecords = $wpdb->get_var($countSql . $whereSql);
+		// }
 
 
     }
@@ -306,7 +296,6 @@ class atomic_api {
 	public function cronUpdate() {
 		$this->pull();
 	}
-
 
 
 	/**
@@ -335,7 +324,7 @@ class atomic_api {
 
 		// Pull from hashtag if it's defined
 		if( defined('TWITTER_HASHTAG') ){
-			$response = $client->get('search/tweets.json?q='.urlencode('#'.TWITTER_HASHTAG), ['auth' => 'oauth']);
+			$response = $client->get('search/tweets.json?q='.urlencode( '#'.TWITTER_HASHTAG ), ['auth' => 'oauth']);
 			$tweets = $response->getBody()->getContents();
 			$decodedContent = json_decode($tweets);
 			// Search results return a slightly different object
@@ -351,10 +340,6 @@ class atomic_api {
 			$this->processEntry($entry);
 
 		};
-
-		// echo "<pre>";
-		// print_r(json_decode($tweets));
-		// echo "</pre>";
 
 		return $decodedContent;
 
@@ -408,6 +393,7 @@ class atomic_api {
 			array(
 				'id' => $entry->id,																				// d
 				'tweet' => html_entity_decode(stripslashes($entry->full_text), ENT_QUOTES),							// s
+				'tweet_type' => $this->get_tweet_type( $entry->full_text ),						// s
 				'created_at' => date( "Y-m-d H:i:s", strtotime($entry->created_at)),							// s
 				'updated_at' => date( "Y-m-d H:i:s", time()),													// s
 				'user_id' => html_entity_decode($entry->user->id,ENT_QUOTES),									// d
@@ -418,10 +404,11 @@ class atomic_api {
 				'symbols' => html_entity_decode(stripslashes( serialize( $entry->entities->symbols ) ), ENT_QUOTES),	// s
 				'user_mentions' => html_entity_decode(stripslashes( serialize( $entry->entities->user_mentions ) ), ENT_QUOTES),	// s
 				'urls' => html_entity_decode(stripslashes( serialize( $entry->entities->urls ) ), ENT_QUOTES),	// s
+				'media' => html_entity_decode(stripslashes( serialize( $entry->entities->media ) ), ENT_QUOTES),	// s
 				'hidden' => 1,																					// d
 			),
 			array(
-				'%d', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d'
+				'%d', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d'
 			)
 		);
 
@@ -444,6 +431,7 @@ class atomic_api {
 			array(
 				'id' => $entry->id,																				// d
 				'tweet' => html_entity_decode(stripslashes($entry->full_text), ENT_QUOTES),							// s
+				'tweet_type' => $this->get_tweet_type( $entry->full_text ),							// s
 				'created_at' => date( "Y-m-d H:i:s", strtotime($entry->created_at)),							// s
 				'updated_at' => date( "Y-m-d H:i:s", time()),													// s
 				'user_id' => html_entity_decode($entry->user->id,ENT_QUOTES),									// d
@@ -454,13 +442,14 @@ class atomic_api {
 				'symbols' => html_entity_decode(stripslashes( serialize( $entry->entities->symbols ) ), ENT_QUOTES),	// s
 				'user_mentions' => html_entity_decode(stripslashes( serialize( $entry->entities->user_mentions ) ), ENT_QUOTES),	// s
 				'urls' => html_entity_decode(stripslashes( serialize( $entry->entities->user_mentions ) ), ENT_QUOTES),	// s
+				'media' => html_entity_decode(stripslashes( serialize( $entry->entities->media ) ), ENT_QUOTES),	// s
 				'hidden' => 1,																					// d
 			),
 			array(
                 'id' => $entry->id
             ),
 			array(
-				'%d', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d'
+				'%d', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d'
 			),
 			array(
                 '%d'
@@ -497,6 +486,18 @@ class atomic_api {
 
 	    if (!$full) $string = array_slice($string, 0, 1);
 	    return $string ? implode(', ', $string) . ' ago' : 'just now';
+	}
+
+	public function get_tweet_type( $tweet_text = "" ){
+
+		$tweet_type = "tweet";
+
+		if( substr( $tweet_text, 0, 3 ) === 'RT ' ) {
+			$tweet_type = "retweet";
+		}
+
+		return $tweet_type;
+
 	}
 
 }
