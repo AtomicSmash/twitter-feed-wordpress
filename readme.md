@@ -35,3 +35,17 @@ Current arguments include:
 
 - results_per_page
 - order
+
+## Background syncing
+
+To sync tweets in background, schedule a cron job to run the command:
+
+```
+wp twitter sync_tweets
+```
+
+If you are using composer in your project, then your WordPress core files might be inside a subfolder. Please modify the path to reflect this. The cron job might look like this:
+
+```
+/usr/local/bin/wp backups backup --path=/path/to/www.website.co.uk/wp
+```

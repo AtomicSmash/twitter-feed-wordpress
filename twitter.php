@@ -116,7 +116,7 @@ class atomic_api {
 
 			if( !defined('TWITTER_CONSUMER_KEY') ){
 
-				echo '<h2>Twitter API</h2>';
+				echo '<h2>Twitter API details</h2>';
 
 				echo "Looks like you need to add these Constants to your config file:";
 
@@ -140,7 +140,7 @@ class atomic_api {
 
 		    	$placeListTable = new Atomic_Api_List_Table($this->columns);
 
-	            echo '<h2>Twitter API '. $this->sync_log( true ) .' <a href="admin.php?page=atomic_apis&sync=1" class="add-new-h2">Sync</a></h2>';
+	            echo '<h2>Tweets '. $this->sync_log( true ) .' <a href="admin.php?page=atomic_apis&sync=1" class="add-new-h2">Sync</a></h2>';
 
 		    	$placeListTable->prepare_items();
 
@@ -338,9 +338,7 @@ class atomic_api {
 			if( $last_synced === false ){
 				return "| Not yet synced";
 			}else{
-
 				$time_diff = human_time_diff( $last_synced );
-
 				return "| Synced " . $time_diff . " ago";
 			}
 		}
@@ -417,7 +415,7 @@ class atomic_api {
 
 		return "added";
 	}
-wo
+
 	public function updateEntry($entry = array()) {
 
 		global $wpdb;
@@ -503,7 +501,7 @@ wo
 
 if ( defined( 'WP_CLI' ) && WP_CLI ) {
     /**
-     * Grab info from APIs
+     * Sync tweet from Twitter API
      *
      * wp atomicsmash create_dates_varient todayÊ
      */
@@ -512,10 +510,13 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 			global $twitterAPI;
 
 			$twitterAPI->pull();
+
+			WP_CLI::success( "Tweets synced" );
+
         }
     }
 
-    WP_CLI::add_command( 'Twiiter', 'TWITTER_CLI' );
+    WP_CLI::add_command( 'twitter', 'TWITTER_CLI' );
 
 }
 
