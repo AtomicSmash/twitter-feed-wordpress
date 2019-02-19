@@ -30,8 +30,8 @@ class atomic_api {
 		$this->api_table = $wpdb->prefix . 'twitter_cache';
 
         $this->columns =  array(
-            'tweet'    => 'Tweet',
-            'user_handle'      => 'Username'
+            'tweet' => 'Tweet',
+            'user_handle' => 'Username'
         );
 
         //$this->setupMenus();
@@ -55,6 +55,8 @@ class atomic_api {
             id BIGINT(20) NOT NULL,
             tweet text,
             tweet_type varchar(26) NOT NULL,
+            likes int(9) NOT NULL,
+            retweets int(9) NOT NULL,
             added_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             created_at TIMESTAMP NOT NULL,
             updated_at TIMESTAMP NOT NULL,
@@ -394,6 +396,8 @@ class atomic_api {
 				'tweet' => html_entity_decode(stripslashes($entry->full_text), ENT_QUOTES),							// s
 				'tweet_type' => $this->get_tweet_type( $entry->full_text ),						// s
 				'created_at' => date( "Y-m-d H:i:s", strtotime($entry->created_at)),							// s
+				'likes' => 0,							// d
+				'retweets' => 0,							// d
 				'updated_at' => date( "Y-m-d H:i:s", time()),													// s
 				'user_id' => html_entity_decode($entry->user->id,ENT_QUOTES),									// d
 				'user_name' => html_entity_decode(stripslashes($entry->user->name), ENT_QUOTES),				// s
@@ -404,16 +408,16 @@ class atomic_api {
 				'user_mentions' => html_entity_decode(stripslashes( serialize( $entry->entities->user_mentions ) ), ENT_QUOTES),	// s
 				'urls' => html_entity_decode(stripslashes( serialize( $entry->entities->urls ) ), ENT_QUOTES),	// s
 				'media' => html_entity_decode(stripslashes( serialize( $entry->entities->media ) ), ENT_QUOTES),	// s
-				'hidden' => 1,																					// d
+				'hidden' => 0,																					// d
 			),
 			array(
-				'%d', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d'
+				'%d', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d'
 			)
 		);
 
 		return "added";
 	}
-
+wo
 	public function updateEntry($entry = array()) {
 
 		global $wpdb;
@@ -423,8 +427,10 @@ class atomic_api {
 			array(
 				'id' => $entry->id,																				// d
 				'tweet' => html_entity_decode(stripslashes($entry->full_text), ENT_QUOTES),							// s
-				'tweet_type' => $this->get_tweet_type( $entry->full_text ),							// s
+				'tweet_type' => $this->get_tweet_type( $entry->full_text ),						// s
 				'created_at' => date( "Y-m-d H:i:s", strtotime($entry->created_at)),							// s
+				'likes' => 0,							// d
+				'retweets' => 0,							// d
 				'updated_at' => date( "Y-m-d H:i:s", time()),													// s
 				'user_id' => html_entity_decode($entry->user->id,ENT_QUOTES),									// d
 				'user_name' => html_entity_decode(stripslashes($entry->user->name), ENT_QUOTES),				// s
@@ -433,15 +439,15 @@ class atomic_api {
 				'hashtags' => html_entity_decode(stripslashes( serialize( $entry->entities->hashtags ) ), ENT_QUOTES),	// s
 				'symbols' => html_entity_decode(stripslashes( serialize( $entry->entities->symbols ) ), ENT_QUOTES),	// s
 				'user_mentions' => html_entity_decode(stripslashes( serialize( $entry->entities->user_mentions ) ), ENT_QUOTES),	// s
-				'urls' => html_entity_decode(stripslashes( serialize( $entry->entities->user_mentions ) ), ENT_QUOTES),	// s
+				'urls' => html_entity_decode(stripslashes( serialize( $entry->entities->urls ) ), ENT_QUOTES),	// s
 				'media' => html_entity_decode(stripslashes( serialize( $entry->entities->media ) ), ENT_QUOTES),	// s
-				'hidden' => 1,																					// d
+				'hidden' => 0,																					// d
 			),
 			array(
                 'id' => $entry->id
             ),
 			array(
-				'%d', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d'
+				'%d', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d'
 			),
 			array(
                 '%d'
