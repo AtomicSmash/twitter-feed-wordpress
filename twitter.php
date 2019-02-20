@@ -161,8 +161,7 @@ class atomic_api {
 
     }
 
-
-    public function get($query_args=array()) {
+    public function get( $query_args=array() ) {
         global $wpdb;
 
         $default_args['results_per_page'] = $this->resultsPerPage;
@@ -170,6 +169,7 @@ class atomic_api {
         $default_args['keyword'] = '';
         $default_args['orderby'] = 'id';
         $default_args['order'] = 'desc';
+        $default_args['tweet_type'] = 'all';
 
         // Merge query args with defaults, keeping only items that have keys in defaults
         $query_args = array_intersect_key($query_args + $default_args, $default_args);
@@ -183,14 +183,12 @@ class atomic_api {
         $extra_join = array();
         $groupSql = '';
 
-
         $fields = "*";
-
 
         $mainSql  = "SELECT " . $fields . " FROM " . $this->api_table . " l " . implode(' ',$extra_join);
 
-
         $countSql = "SELECT count(l.question_group_id) FROM " . $this->api_table .  " l ";
+
         if ($this->resultsPerPage>0) {
             $limitSql = $wpdb->prepare("LIMIT %d,%d ", $firstResult, $this->resultsPerPage);
         } else {
@@ -215,13 +213,16 @@ class atomic_api {
             $whereSqlLines[] = '(' . implode(" OR ", $innerWhere) . ')';
         }
 
+		if ( $query_args['tweet_type'] != "all" ) {
+			$whereSqlLines[] = "( `tweet_type` = '". $query_args['tweet_type'] ."' )";
+		}
+
         $whereSql = "";
         if ($whereSqlLines) {
-			echo "where triggered";
             $whereSql = 'WHERE ' . implode(' AND ',$whereSqlLines) . ' ';
         }
 
-        // Sort Order
+		// Sort Order
         $orderSql = 'ORDER BY ' . $query_args['orderby'] . ' ' . strtoupper($query_args['order']) . ' ';
 
         $fullSql = $mainSql . ' ' . $whereSql . ' ' . $groupSql . ' ' . $orderSql . ' ' .$limitSql;
@@ -314,7 +315,7 @@ class atomic_api {
 			// $decodedContent = json_decode($tweets);
 		// }
 
-		$response = $client->get('statuses/user_timeline.json?tweet_mode=extended', ['auth' => 'oauth']);
+		$response = $client->get('statuses/user_timeline.json?tweet_mode=extended&count=100', ['auth' => 'oauth']);
 		$tweets = $response->getBody()->getContents();
 		$decodedContent = json_decode($tweets);
 
@@ -424,8 +425,8 @@ class atomic_api {
 				'tweet' => html_entity_decode(stripslashes($entry->full_text), ENT_QUOTES),							// s
 				'tweet_type' => $this->get_tweet_type( $entry->full_text ),						// s
 				'created_at' => date( "Y-m-d H:i:s", strtotime($entry->created_at)),							// s
-				'likes' => 0,							// d
-				'retweets' => 0,							// d
+				'likes' => html_entity_decode($entry->favorite_count,ENT_QUOTES),							// d
+				'retweets' => html_entity_decode($entry->retweet_count,ENT_QUOTES),							// d
 				'updated_at' => date( "Y-m-d H:i:s", time()),													// s
 				'user_id' => html_entity_decode($entry->user->id,ENT_QUOTES),									// d
 				'user_name' => html_entity_decode(stripslashes($entry->user->name), ENT_QUOTES),				// s
@@ -489,8 +490,8 @@ class atomic_api {
 				'tweet' => html_entity_decode(stripslashes($entry->full_text), ENT_QUOTES),							// s
 				'tweet_type' => $this->get_tweet_type( $entry->full_text ),						// s
 				'created_at' => date( "Y-m-d H:i:s", strtotime($entry->created_at)),							// s
-				'likes' => 0,							// d
-				'retweets' => 0,							// d
+				'likes' => html_entity_decode($entry->favorite_count,ENT_QUOTES),							// d
+				'retweets' => html_entity_decode($entry->retweet_count,ENT_QUOTES),							// d
 				'updated_at' => date( "Y-m-d H:i:s", time()),													// s
 				'user_id' => html_entity_decode($entry->user->id,ENT_QUOTES),									// d
 				'user_name' => html_entity_decode(stripslashes($entry->user->name), ENT_QUOTES),				// s

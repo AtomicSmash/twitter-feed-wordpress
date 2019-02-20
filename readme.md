@@ -5,7 +5,7 @@
 To install add this to your composer file:
 
 ```
-"atomicsmash/apis" : "dev-master"
+"atomicsmash/twitter-feed-wordpress" : "*",
 ```
 
 ## Setup Twitter API
@@ -28,8 +28,9 @@ You can query the cached tweet by using:
 ```php
 if( isset( $twitterAPI ) ){
 	$args['results_per_page'] = 4; // int
-	$args['order'] = 4; // 'asc' or 'dsc'
-	
+	$args['order'] = 'asc'; // 'asc' or 'desc'
+	$args['tweet_type'] = 'all'; // 'all', 'tweet' or 'retweet'
+
 	$tweets = $twitterAPI->get($args);
 }
 ```
