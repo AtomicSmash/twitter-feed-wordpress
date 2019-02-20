@@ -27,14 +27,13 @@ You can query the cached tweet by using:
 
 ```php
 if( isset( $twitterAPI ) ){
-	$args['results_per_page'] = 4;
+	$args['results_per_page'] = 4; // int
+	$args['order'] = 4; // 'asc' or 'dsc'
+	
 	$tweets = $twitterAPI->get($args);
 }
 ```
-Current arguments include:
 
-- results_per_page
-- order
 
 ## Background syncing
 
@@ -47,5 +46,5 @@ wp twitter sync_tweets
 If you are using composer in your project, then your WordPress core files might be inside a subfolder. Please modify the path to reflect this. The cron job might look like this:
 
 ```
-/usr/local/bin/wp backups backup --path=/path/to/www.website.co.uk/wp
+/usr/local/bin/wp twitter sync_tweets --path=/path/to/www.website.co.uk/wp
 ```

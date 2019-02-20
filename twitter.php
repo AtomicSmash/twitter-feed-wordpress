@@ -387,6 +387,36 @@ class atomic_api {
 		global $wpdb;
 		$wpdb->show_errors();
 
+		if( isset( $entry->entities->hashtags ) ){
+			$hashtags = $entry->entities->hashtags;
+		}else{
+			$hashtags = array();
+		}
+
+		if( isset( $entry->entities->symbols ) ){
+			$symbols = $entry->entities->symbols;
+		}else{
+			$symbols = array();
+		}
+
+		if( isset( $entry->entities->user_mentions ) ){
+			$user_mentions = $entry->entities->user_mentions;
+		}else{
+			$user_mentions = array();
+		}
+
+		if( isset( $entry->entities->urls ) ){
+			$urls = $entry->entities->urls;
+		}else{
+			$urls = array();
+		}
+
+		if( isset( $entry->entities->media ) ){
+			$media = $entry->entities->media;
+		}else{
+			$media = array();
+		}
+
 		//ASTODO this is a dupe of update
 		$wpdb->insert($this->api_table,
 			array(
@@ -401,11 +431,11 @@ class atomic_api {
 				'user_name' => html_entity_decode(stripslashes($entry->user->name), ENT_QUOTES),				// s
 				'user_handle' => html_entity_decode(stripslashes($entry->user->screen_name), ENT_QUOTES),		// s
 				'user_image' => html_entity_decode(stripslashes($entry->user->profile_image_url), ENT_QUOTES),	// s
-				'hashtags' => html_entity_decode(stripslashes( serialize( $entry->entities->hashtags ) ), ENT_QUOTES),	// s
-				'symbols' => html_entity_decode(stripslashes( serialize( $entry->entities->symbols ) ), ENT_QUOTES),	// s
-				'user_mentions' => html_entity_decode(stripslashes( serialize( $entry->entities->user_mentions ) ), ENT_QUOTES),	// s
-				'urls' => html_entity_decode(stripslashes( serialize( $entry->entities->urls ) ), ENT_QUOTES),	// s
-				'media' => html_entity_decode(stripslashes( serialize( $entry->entities->media ) ), ENT_QUOTES),	// s
+				'hashtags' => html_entity_decode(stripslashes( serialize( $hashtags ) ), ENT_QUOTES),	// s
+				'symbols' => html_entity_decode(stripslashes( serialize( $symbols ) ), ENT_QUOTES),	// s
+				'user_mentions' => html_entity_decode(stripslashes( serialize( $user_mentions ) ), ENT_QUOTES),	// s
+				'urls' => html_entity_decode(stripslashes( serialize( $urls ) ), ENT_QUOTES),	// s
+				'media' => html_entity_decode(stripslashes( serialize( $media ) ), ENT_QUOTES),	// s
 				'hidden' => 0,																					// d
 			),
 			array(
@@ -421,6 +451,38 @@ class atomic_api {
 		global $wpdb;
 		$wpdb->show_errors();
 
+
+		if( isset( $entry->entities->hashtags ) ){
+			$hashtags = $entry->entities->hashtags;
+		}else{
+			$hashtags = array();
+		}
+
+		if( isset( $entry->entities->symbols ) ){
+			$symbols = $entry->entities->symbols;
+		}else{
+			$symbols = array();
+		}
+
+		if( isset( $entry->entities->user_mentions ) ){
+			$user_mentions = $entry->entities->user_mentions;
+		}else{
+			$user_mentions = array();
+		}
+
+		if( isset( $entry->entities->urls ) ){
+			$urls = $entry->entities->urls;
+		}else{
+			$urls = array();
+		}
+
+		if( isset( $entry->entities->media ) ){
+			$media = $entry->entities->media;
+		}else{
+			$media = array();
+		}
+
+
 		$wpdb->update($this->api_table,
 			array(
 				'id' => $entry->id,																				// d
@@ -434,11 +496,11 @@ class atomic_api {
 				'user_name' => html_entity_decode(stripslashes($entry->user->name), ENT_QUOTES),				// s
 				'user_handle' => html_entity_decode(stripslashes($entry->user->screen_name), ENT_QUOTES),		// s
 				'user_image' => html_entity_decode(stripslashes($entry->user->profile_image_url), ENT_QUOTES),	// s
-				'hashtags' => html_entity_decode(stripslashes( serialize( $entry->entities->hashtags ) ), ENT_QUOTES),	// s
-				'symbols' => html_entity_decode(stripslashes( serialize( $entry->entities->symbols ) ), ENT_QUOTES),	// s
-				'user_mentions' => html_entity_decode(stripslashes( serialize( $entry->entities->user_mentions ) ), ENT_QUOTES),	// s
-				'urls' => html_entity_decode(stripslashes( serialize( $entry->entities->urls ) ), ENT_QUOTES),	// s
-				'media' => html_entity_decode(stripslashes( serialize( $entry->entities->media ) ), ENT_QUOTES),	// s
+				'hashtags' => html_entity_decode(stripslashes( serialize( $hashtags ) ), ENT_QUOTES),	// s
+				'symbols' => html_entity_decode(stripslashes( serialize( $symbols ) ), ENT_QUOTES),	// s
+				'user_mentions' => html_entity_decode(stripslashes( serialize( $user_mentions ) ), ENT_QUOTES),	// s
+				'urls' => html_entity_decode(stripslashes( serialize( $urls ) ), ENT_QUOTES),	// s
+				'media' => html_entity_decode(stripslashes( serialize( $media ) ), ENT_QUOTES),	// s
 				'hidden' => 0,																					// d
 			),
 			array(
