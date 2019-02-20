@@ -1,11 +1,11 @@
 {
-  "name": "atomicsmash/apis",
-  "description": "Atomic Smash - Atomis APIS",
+  "name": "atomicsmash/twitter-feed-wordpress",
+  "description": "Atomic Smash - Twitter Feed for WordPress",
   "keywords": ["wordpress", "plugin", "apis", "Twitter"],
   "homepage": "http://www.atomicsmash.co.uk/",
   "authors": [
     {
-      "name": "Atomic Smash Apis",
+      "name": "Atomic Smash",
       "email": "mail@atomicsmash.co.uk",
       "homepage": "http://www.atomicsmash.co.uk/"
     }
