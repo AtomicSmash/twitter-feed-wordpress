@@ -1,4 +1,4 @@
-# Apis
+# Twitter feed for WordPress
 
 ## Installing
 
@@ -8,9 +8,7 @@ To install add this to your composer file:
 "atomicsmash/twitter-feed-wordpress" : "*",
 ```
 
-## Setup Twitter API
-
-Create a twitter app and generate API access keys from https://apps.twitter.com/.
+Next, create a twitter app and generate API access keys from https://apps.twitter.com/.
 
 Then add these inside your environment specific constants to your wp-config file:
 
@@ -21,7 +19,7 @@ define('TWITTER_OAUTH_TOKEN','');
 define('TWITTER_OAUTH_TOKEN_SECRET','');
 ```
 
-## Using API in theme
+## Using feed in theme
 
 You can query the cached tweet by using:
 
@@ -34,7 +32,6 @@ if( isset( $twitterAPI ) ){
 	$tweets = $twitterAPI->get($args);
 }
 ```
-
 
 ## Background syncing
 
