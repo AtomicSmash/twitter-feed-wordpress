@@ -236,6 +236,7 @@ class atomic_api {
 			foreach($this->recordArray as $key => $tweet){
 				$this->recordArray[$key]['human_time_ago'] = $this->human_elapsed_time($this->recordArray[$key]['created_at']);
 				$this->recordArray[$key]['tweet_with_links'] = $this->linkify($this->recordArray[$key]['tweet']);
+				$this->recordArray[$key]['url'] = "https://twitter.com/" . $this->recordArray[$key]['user_handle'] . "/status/" . $this->recordArray[$key]['id'];
 				$this->recordArray[$key]['hashtags'] = unserialize( $this->recordArray[$key]['hashtags'] );
 				$this->recordArray[$key]['symbols'] = unserialize( $this->recordArray[$key]['symbols'] );
 				$this->recordArray[$key]['user_mentions'] = unserialize( $this->recordArray[$key]['user_mentions'] );
