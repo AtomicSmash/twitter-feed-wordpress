@@ -316,7 +316,12 @@ class atomic_api {
 			// $decodedContent = json_decode($tweets);
 		// }
 
-		$response = $client->get('statuses/user_timeline.json?tweet_mode=extended&count=100', ['auth' => 'oauth']);
+		if( defined( TWITTER_USERNAME ) ){
+			$response = $client->get('statuses/user_timeline.json?screen_name='.TWITTER_USERNAME.'&tweet_mode=extended&count=100', ['auth' => 'oauth']);
+		}else{
+			$response = $client->get('statuses/user_timeline.json?tweet_mode=extended&count=100', ['auth' => 'oauth']);
+		}
+
 		$tweets = $response->getBody()->getContents();
 		$decodedContent = json_decode($tweets);
 

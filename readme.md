@@ -19,6 +19,16 @@ define('TWITTER_OAUTH_TOKEN','');
 define('TWITTER_OAUTH_TOKEN_SECRET','');
 ```
 
+## Pulling tweets from a specific user
+
+Just add a constant specifying the username:
+
+```php
+define('TWITTER_USERNAME','');
+```
+
+Don't worry about adding the '@' symbol. For example `define('TWITTER_USERNAME','atomicsmash')`
+
 ## Using feed in theme
 
 You can query the cached tweet by using:
