@@ -4,16 +4,49 @@ use GuzzleHttp\Client;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Subscriber\Oauth\Oauth1;
 
-class atomic_api {
+/**
+ * Atomic Smash wrapper for the twitter API
+ *
+ * // ASREFACTOR: After looking through this class, there is no utility provided
+ * to paginate the results for the table in the admin area. Not sure if required
+ * but might be handy in the future?
+ */
+Class atomic_api
+{
 
+	/**
+	 * @var string $type {@deprecated}
+	 */
 	public $type = '';
-	public $recordArray = array();
+
+	/**
+	 * @var array $recordArray Array of tweets
+	 */
+	public $recordArray = [];
+
+	/**
+	 * @var int $totalRecords Total records {@deprecated}
+	 */
 	public $totalRecords = 0;
+
+	/**
+	 * @var int $pageRecords Total records currently displayed {@deprecated}
+	 */
 	public $pageRecords = 0;
-	public $resultsPerPage = 15;
+
+	/**
+	 * @var int $resultsPerPage Number of results to load
+	 */
+	public $resultsPerPage = 20;
+
+	/**
+	 * @var string $api_table DB table name
+	 */
 	public $api_table = "";
 
-	//Variables for later use
+	/**
+	 * Used by code external to this class
+	 */
 	public $id;
 	public $text;
 	public $created_at;
@@ -23,35 +56,44 @@ class atomic_api {
 	public $user_location;
 
 
-	// Class Constructor
-	public function __construct() {
+	/**
+	 * Constructor
+	 *
+	 * @uses $wpdb
+	 *
+	 * Adds action to the WP admin_menu
+	 */
+	public function __construct()
+	{
 		global $wpdb;
 
 		$this->api_table = $wpdb->prefix . 'twitter_cache';
 
-        $this->columns =  array(
-            'tweet' => 'Tweet',
-            'user_handle' => 'Username'
-        );
+        $this->columns =  [
+            'tweet' 		=> 'Tweet',
+            'user_handle' 	=> 'Username',
+			'tweet_type'	=> 'Type'
+        ];
 
         //$this->setupMenus();
         add_action( 'admin_menu', array( $this, 'setupMenus') );
-
 	}
+
 
 	/**
 	 * Setup table for API
-	 * @return bool yet reurn isn't used
+	 *
+	 * @return bool Allways returns true
 	 */
-	function create_table() {
-
+	function create_table()
+	{
     	global $wpdb;
+
     	$charset_collate = $wpdb->get_charset_collate();
 
         require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 
-        $table_name = $wpdb->prefix . 'twitter_cache';
-        $sql = "CREATE TABLE $table_name (
+        $sql = "CREATE TABLE $this->api_table (
             id BIGINT(20) NOT NULL,
             tweet text,
             tweet_type varchar(26) NOT NULL,
@@ -76,12 +118,18 @@ class atomic_api {
         dbDelta( $sql );
 
 		return true;
-
 	}
 
-	function delete_table() {
 
+	/**
+	 * Deletes the table used to cache tweets
+	 *
+	 * @return bool Always returns true
+	 */
+	function delete_table()
+	{
 		global $wpdb;
+
     	$charset_collate = $wpdb->get_charset_collate();
 		require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 
@@ -91,93 +139,118 @@ class atomic_api {
         dbDelta( $sql );
 
 		return true;
-
 	}
-	//dynamically declare public variables
-	public function create_variables($name,$value){
 
+
+	/**
+	 * Allow direct setting of class properties
+	 *
+	 * Since we're not running strict_mode we can just use:
+	 * ```php
+	 * $atomic_api->foo = 'bar';
+	 * ```
+	 *
+	 * @deprecated
+	 *
+	 * @param string $name 	Property name
+	 * @param mixed  $value Property value
+	 *
+	 * @return void N/a
+	 */
+	public function create_variables( $name, $value )
+	{
 		$this->{$name} = $value;
-
 	}
 
 
-	// GET Functions
-	public function setupMenus() {
-
-        add_submenu_page("atomic_apis", 'Twitter', 'Twitter', 'edit_posts', 'atomic_apis', array($this,'apiListPage'));
-
+	/**
+	 * Add submenu's for this plugin
+	 *
+	 * @return void N/a
+	 */
+	public function setupMenus()
+	{
+        add_submenu_page("atomic_apis", 'Twitter', 'Twitter', 'edit_posts', 'atomic_apis', [$this,'apiListPage']);
 	}
 
 
-    public function apiListPage() {
+	/**
+	 * Display a list of the currently stored tweets
+	 *
+	 * @return void N/a
+	 */
+    public function apiListPage()
+	{
+		if ( !defined('TWITTER_CONSUMER_KEY') ) {
 
+			?>
+				<div class="wrap">
+					<h2>Twitter API details</h2>
+					Looks like you need to add these Constants to your config file:
+					<pre>
+						define('TWITTER_CONSUMER_KEY', '');		<br />
+						define('TWITTER_CONSUMER_SECRET', ''); 	<br />
+						define('TWITTER_OAUTH_TOKEN', ''); 		<br />
+						define('TWITTER_OAUTH_TOKEN_SECRET', '');
+					</pre>
+				 	Once these are in place, come back here to sync your apis!
+				</div>
+			<?php
 
-        echo '<div class="wrap">';
+		} else {
 
-			if( !defined('TWITTER_CONSUMER_KEY') ){
+			if ( isset($_GET['sync']) ) {
+				$this->pull();
+			};
 
-				echo '<h2>Twitter API details</h2>';
+            $entries = $this->get();
 
-				echo "Looks like you need to add these Constants to your config file:";
+			// Define a new table using our column definition
+	    	$placeListTable = new Atomic_Api_List_Table( $this->columns );
 
-				echo "<pre>";
-					echo "define('TWITTER_CONSUMER_KEY','');\n";
-					echo "define('TWITTER_CONSUMER_SECRET','');\n";
-					echo "define('TWITTER_OAUTH_TOKEN','');\n";
-					echo "define('TWITTER_OAUTH_TOKEN_SECRET','');";
-				echo "</pre>";
+			$placeListTable->prepare_items();
 
-				echo "Once these are in place, come back here to sync your apis";
+            $placeListTable->items = $this->recordArray;
 
-
-			}else{
-
-				if(isset($_GET['sync'])){
-					$this->pull();
-				};
-
-	            $entries = $this->get();
-
-		    	$placeListTable = new Atomic_Api_List_Table($this->columns);
-
-	            echo '<h2>Tweets '. $this->sync_log( true ) .' <a href="admin.php?page=atomic_apis&sync=1" class="add-new-h2">Sync</a></h2>';
-
-		    	$placeListTable->prepare_items();
-
-	            $placeListTable->items = $this->recordArray;
-
-				?>
-				<form id="items-filter" method="get">
-					<input type="hidden" name="page" value="<?php echo $_REQUEST['page'] ?>"/>
-					<?php
-					// Now we can render the completed list table
-					$placeListTable->display();
-	                ?>
-				</form>
-				<?php
-			}
-
-		echo '</div>';
-
+			?>
+				<div class="wrap">
+					<h2>Tweets <?= $this->sync_log( true ) ?><a  href="admin.php?page=atomic_apis&sync=1" class="add-new-h2">Sync</a></h2>
+					<form id="items-filter" method="get">
+						<input type="hidden" name="page" value="<?php echo $_REQUEST['page'] ?>"/>
+						<?= $placeListTable->display(); ?>
+					</form>
+				</div>
+			<?php
+		}
     }
 
-    public function get( $query_args=array() ) {
+
+	/**
+	 * Get stored tweets from the database
+	 *
+	 * @param	object $query_args Additional query parameters
+	 * @return 	array 			   Tweets
+	 */
+    public function get( $query_args = [] )
+	{
         global $wpdb;
 
-        $default_args['results_per_page'] = $this->resultsPerPage;
-        $default_args['page'] = 1;
-        $default_args['keyword'] = '';
-        $default_args['orderby'] = 'id';
-        $default_args['order'] = 'desc';
-        $default_args['tweet_type'] = 'all';
+		$default_args = [
+			'results_per_page'	=> $this->resultsPerPage,
+			'page'				=> 1,
+			'keyword'			=> '',
+			'orderby'			=> 'id',
+			'order'				=> 'desc',
+			'tweet_type'		=> 'all'
+		];
 
         // Merge query args with defaults, keeping only items that have keys in defaults
         $query_args = array_intersect_key($query_args + $default_args, $default_args);
 
         // Pagination
-        $this->resultsPerPage = $query_args['results_per_page'];
+        $this->resultsPerPage = is_numeric($query_args['results_per_page']) ? $query_args['results_per_page'] : $this->resultsPerPage;
 
-        $firstResult = (int)($query_args['page']-1) * $this->resultsPerPage;
+        $firstResult = (int)($query_args['page'] - 1) * $this->resultsPerPage;
 
         $whereSqlLines = array();
         $extra_join = array();
@@ -189,16 +262,19 @@ class atomic_api {
 
         $countSql = "SELECT count(l.question_group_id) FROM " . $this->api_table .  " l ";
 
-        if ($this->resultsPerPage>0) {
+        if ( $this->resultsPerPage > 0 ) {
             $limitSql = $wpdb->prepare("LIMIT %d,%d ", $firstResult, $this->resultsPerPage);
         } else {
             $limitSql = "";
         }
 
         // Text search filter
-        if ($query_args['keyword']) {
-            $search_terms = explode(' ',$query_args['keyword']);
-            foreach ($search_terms as $search_term) {
+        if ( $query_args['keyword'] ) {
+
+            $search_terms = explode(' ', $query_args['keyword']);
+
+            foreach ( $search_terms as $search_term ) {
+
                 if (is_numeric($search_term)) {
                     $innerWhere[] = $wpdb->prepare( "(l.field1 LIKE '%s' OR l.field2 LIKE '%s' OR l.field3 = %d)",
                         '%' . $search_term . '%',
@@ -210,6 +286,7 @@ class atomic_api {
                         '%' . $search_term . '%');
                 }
             }
+
             $whereSqlLines[] = '(' . implode(" OR ", $innerWhere) . ')';
         }
 
@@ -218,7 +295,8 @@ class atomic_api {
 		}
 
         $whereSql = "";
-        if ($whereSqlLines) {
+
+        if ( $whereSqlLines ) {
             $whereSql = 'WHERE ' . implode(' AND ',$whereSqlLines) . ' ';
         }
 
@@ -228,20 +306,24 @@ class atomic_api {
         $fullSql = $mainSql . ' ' . $whereSql . ' ' . $groupSql . ' ' . $orderSql . ' ' .$limitSql;
 
 		$wpdb->show_errors();
+
         $this->recordArray = $wpdb->get_results($fullSql , 'ARRAY_A');
 		// $this->recordArray = $wpdb->get_results($fullSql);
 
+		if ( !empty($this->recordArray) ) {
+			foreach( $this->recordArray as $key => $tweet ) {
 
-		if(count($this->recordArray) > 0){
-			foreach($this->recordArray as $key => $tweet){
-				$this->recordArray[$key]['human_time_ago'] = $this->human_elapsed_time($this->recordArray[$key]['created_at']);
-				$this->recordArray[$key]['tweet_with_links'] = $this->linkify($this->recordArray[$key]['tweet']);
-				$this->recordArray[$key]['url'] = "https://twitter.com/" . $this->recordArray[$key]['user_handle'] . "/status/" . $this->recordArray[$key]['id'];
-				$this->recordArray[$key]['hashtags'] = unserialize( $this->recordArray[$key]['hashtags'] );
-				$this->recordArray[$key]['symbols'] = unserialize( $this->recordArray[$key]['symbols'] );
-				$this->recordArray[$key]['user_mentions'] = unserialize( $this->recordArray[$key]['user_mentions'] );
-				$this->recordArray[$key]['urls'] = unserialize( $this->recordArray[$key]['urls'] );
-				$this->recordArray[$key]['media'] = unserialize( $this->recordArray[$key]['media'] );
+				$this->recordArray[$key] = array_merge( $tweet, [
+					'human_time_ago'	=> $this->human_elapsed_time($this->recordArray[$key]['created_at']),
+					'tweet_with_links'	=> $this->linkify($this->recordArray[$key]['tweet']),
+					'url'				=> "https://twitter.com/" . $this->recordArray[$key]['user_handle'] . "/status/" . $this->recordArray[$key]['id'],
+					'hashtags'			=> unserialize( $this->recordArray[$key]['hashtags'] ),
+					'symbols'			=> unserialize( $this->recordArray[$key]['symbols'] ),
+					'user_mentions'		=> unserialize( $this->recordArray[$key]['user_mentions'] ),
+					'urls'				=> unserialize( $this->recordArray[$key]['urls'] ),
+					'media'				=> unserialize( $this->recordArray[$key]['media'] )
+				]);
+
 			}
 		}
 
@@ -257,10 +339,17 @@ class atomic_api {
 		// 	$this->totalRecords = $wpdb->get_var($countSql . $whereSql);
 		// }
 
-
     }
 
-	public function linkify($tweet) {
+
+	/**
+	 * Add links to a tweet
+	 *
+	 * @param  string $tweet Subject tweet
+	 * @return string 		 Result
+	 */
+	public function linkify( $tweet )
+	{
 
 	  //Convert urls to <a> links
 	  $tweet = preg_replace("/([\w]+\:\/\/[\w-?&;#~=\.\/\@]+[\w\/])/", "<a target=\"_blank\" href=\"$1\">$1</a>", $tweet);
@@ -272,28 +361,37 @@ class atomic_api {
 	  $tweet = preg_replace("/@([A-Za-z0-9\/\.]*)/", "<a href=\"http://www.twitter.com/$1\">@$1</a>", $tweet);
 
 	  return $tweet;
-
 	}
 
 
-	public function cronUpdate() {
+	/**
+	 * Method for the cron job to call
+	 *
+	 * Simply wraps the {@see atomic_api::pull()} function
+	 *
+	 * @return void N/a
+	 */
+	public function cronUpdate()
+	{
 		$this->pull();
 	}
 
 
 	/**
-	 * Call API for results, then process
-	 * @return [type] [description]
+	 * Call API for tweets and process response
+	 *
+	 * @return array Tweets [Or empty]
 	 */
-    public function pull() {
+    public function pull()
+	{
 
 		$stack = HandlerStack::create();
 
 		$middleware = new Oauth1([
-			'consumer_key'  => TWITTER_CONSUMER_KEY,
-			'consumer_secret' => TWITTER_CONSUMER_SECRET,
-			'token'       => TWITTER_OAUTH_TOKEN,
-			'token_secret'  => TWITTER_OAUTH_TOKEN_SECRET
+			'consumer_key'  	=> TWITTER_CONSUMER_KEY,
+			'consumer_secret' 	=> TWITTER_CONSUMER_SECRET,
+			'token'       		=> TWITTER_OAUTH_TOKEN,
+			'token_secret'  	=> TWITTER_OAUTH_TOKEN_SECRET
 		]);
 
 		$stack->push($middleware);
@@ -316,120 +414,140 @@ class atomic_api {
 			// $decodedContent = json_decode($tweets);
 		// }
 
-		if( defined( 'TWITTER_USERNAME' ) ){
+		if ( defined( 'TWITTER_USERNAME' ) ) {
 			$response = $client->get('statuses/user_timeline.json?screen_name='.TWITTER_USERNAME.'&tweet_mode=extended&count=100', ['auth' => 'oauth']);
-		}else{
+		} else {
 			$response = $client->get('statuses/user_timeline.json?tweet_mode=extended&count=100', ['auth' => 'oauth']);
 		}
 
 		$tweets = $response->getBody()->getContents();
-		$decodedContent = json_decode($tweets);
 
-		foreach ($decodedContent as $key => $entry) {
+		$decodedContent = json_decode( $tweets );
 
-			$this->processEntry($entry);
+		// Rudimentary error checking
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
 
-		};
+			$decodedContent = [];
 
-		update_option( 'twitter_last_synced', date( 'U' ) );
+		} else {
+
+			foreach ( $decodedContent as $key => $entry ) {
+				$this->processEntry( $entry );
+			}
+
+			update_option( 'twitter_last_synced', date( 'U' ) );
+		}
 
 		return $decodedContent;
-
-	}
-
-	public function sync_log( $output = false ){
-
-		if( $output != false ){
-			$last_synced = get_option( 'twitter_last_synced' );
-
-			if( $last_synced === false ){
-				return "| Not yet synced";
-			}else{
-				$time_diff = human_time_diff( $last_synced );
-				return "| Synced " . $time_diff . " ago";
-			}
-		}
 	}
 
 
 	/**
-	 * Process return to see if it already exists
-	 * @param  array  $entry [description]
-	 * @return [type]        [description]
+	 * Get the last time the log was synched
+	 *
+	 * The function parameter is unnecessary and may be removed in the future.
+	 *
+	 * @param  boolean $output 	{@deprecated}
+	 * @return string|void		Formatted last sync time
 	 */
-	public function processEntry($entry=array()) {
+	public function sync_log( $output = true )
+	{
+		if ( $output !== false ) {
 
-		if($this->exist($entry->id) == true){
-			return $this->updateEntry($entry);
-		}else{
-			return $this->insertEntry($entry);
+			$last_synced = get_option( 'twitter_last_synced' );
+
+			if ( $last_synced === false ) {
+				return "| Not yet synced";
+			} else {
+				return "| Synced " . human_time_diff( $last_synced ) . " ago";
+			}
 		}
 
+		return;
 	}
+
+
+	/**
+	 * Stores tweet in cache table, first checking to see if it already exists
+	 *
+	 * @param  object $entry 	Tweet
+	 * @return void 			N/a
+	 */
+	public function processEntry( $entry = [] )
+	{
+		if( $this->exist($entry->id) === true ){
+			$this->updateEntry($entry);
+		} else {
+			$this->insertEntry($entry);
+		}
+
+		return;
+	}
+
 
 	/**
 	 * Check to see if API entry exists
-	 * @param  string $id API ID
-	 * @return [bool] Returns whether the entry exists
+	 *
+	 * @param 	string $id 	API ID
+	 * @return 	bool 		Whether the entry exists
 	 */
-	public function exist($id = "") {
-
+	public function exist( $id = '' )
+	{
 		global $wpdb;
 
-		$result = $wpdb->get_results ("SELECT id FROM ".$this->api_table." WHERE id = '".$id."'");
+		$result = $wpdb->get_results ("SELECT id FROM " . $this->api_table . " WHERE id = '" . $id . "'");
 
-		if (count ($result) > 0) {
-			//$row = current ($result);
-			return true;
-		} else {
-			return false;
-		}
-
+		return !empty( $result );
 	}
 
 
-
-    public function insertEntry($entry = array()) {
+	/**
+	 * Insert a tweet from the API into the database
+	 *
+	 * @param object $entry Tweet data
+	 * @return void			N/a
+	 */
+    public function insertEntry( $entry = [] )
+	{
 
 		global $wpdb;
 		$wpdb->show_errors();
 
-		if( isset( $entry->entities->hashtags ) ){
+		if ( isset( $entry->entities->hashtags ) ) {
 			$hashtags = $entry->entities->hashtags;
-		}else{
-			$hashtags = array();
+		} else {
+			$hashtags = [];
 		}
 
-		if( isset( $entry->entities->symbols ) ){
+		if ( isset( $entry->entities->symbols ) ) {
 			$symbols = $entry->entities->symbols;
-		}else{
-			$symbols = array();
+		} else {
+			$symbols = [];
 		}
 
-		if( isset( $entry->entities->user_mentions ) ){
+		if ( isset( $entry->entities->user_mentions ) ) {
 			$user_mentions = $entry->entities->user_mentions;
-		}else{
-			$user_mentions = array();
+		} else {
+			$user_mentions = [];
 		}
 
-		if( isset( $entry->entities->urls ) ){
+		if ( isset( $entry->entities->urls ) ) {
 			$urls = $entry->entities->urls;
-		}else{
-			$urls = array();
+		} else {
+			$urls = [];
 		}
 
-		if( isset( $entry->entities->media ) ){
+		if ( isset( $entry->entities->media ) ) {
 			$media = $entry->entities->media;
-		}else{
-			$media = array();
+		} else {
+			$media = [];
 		}
 
 		//ASTODO this is a dupe of update
-		$wpdb->insert($this->api_table,
-			array(
+		$wpdb->insert( $this->api_table, [
 				'id' => $entry->id,																				// d
 				'tweet' => html_entity_decode(stripslashes($entry->full_text), ENT_QUOTES),							// s
-				'tweet_type' => $this->get_tweet_type( $entry->full_text ),						// s
+				'tweet_type' => $this->get_tweet_type( $entry ),						// s
 				'created_at' => date( "Y-m-d H:i:s", strtotime($entry->created_at)),							// s
 				'likes' => html_entity_decode($entry->favorite_count,ENT_QUOTES),							// d
 				'retweets' => html_entity_decode($entry->retweet_count,ENT_QUOTES),							// d
@@ -444,95 +562,107 @@ class atomic_api {
 				'urls' => html_entity_decode(stripslashes( serialize( $urls ) ), ENT_QUOTES),	// s
 				'media' => html_entity_decode(stripslashes( serialize( $media ) ), ENT_QUOTES),	// s
 				'hidden' => 0,																					// d
-			),
-			array(
+			], [
 				'%d', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d'
-			)
+			]
 		);
 
-		return "added";
+		return;
 	}
 
-	public function updateEntry($entry = array()) {
+
+	/**
+	 * Update an existing tweet in the DB table
+	 *
+	 * @param  object $entry Tweet
+	 * @return void			 N/a
+	 */
+	public function updateEntry( $entry = [] )
+	{
 
 		global $wpdb;
 		$wpdb->show_errors();
 
 
-		if( isset( $entry->entities->hashtags ) ){
-			$hashtags = $entry->entities->hashtags;
-		}else{
-			$hashtags = array();
-		}
+		$hashtags = isset($entry->entities->hashtags) ? $entry->entities->hashtags : [];
 
-		if( isset( $entry->entities->symbols ) ){
+		// if ( isset( $entry->entities->hashtags ) ) {
+		// 	$hashtags = $entry->entities->hashtags;
+		// } else{
+		// 	$hashtags = [];
+		// }
+
+		if ( isset( $entry->entities->symbols ) ) {
 			$symbols = $entry->entities->symbols;
-		}else{
-			$symbols = array();
+		} else {
+			$symbols = [];
 		}
 
-		if( isset( $entry->entities->user_mentions ) ){
+		if ( isset( $entry->entities->user_mentions ) ) {
 			$user_mentions = $entry->entities->user_mentions;
-		}else{
-			$user_mentions = array();
+		} else {
+			$user_mentions = [];
 		}
 
-		if( isset( $entry->entities->urls ) ){
+		if ( isset( $entry->entities->urls ) ) {
 			$urls = $entry->entities->urls;
-		}else{
-			$urls = array();
+		} else {
+			$urls = [];
 		}
 
-		if( isset( $entry->entities->media ) ){
+		if ( isset( $entry->entities->media ) ) {
 			$media = $entry->entities->media;
-		}else{
-			$media = array();
+		} else {
+			$media = [];
 		}
 
+		$wpdb->update( $this->api_table, [
+			'id' => $entry->id,																				// d
+			'tweet' => html_entity_decode(stripslashes($entry->full_text), ENT_QUOTES),							// s
+			'tweet_type' => $this->get_tweet_type( $entry ),						// s
+			'created_at' => date( "Y-m-d H:i:s", strtotime($entry->created_at)),							// s
+			'likes' => html_entity_decode($entry->favorite_count,ENT_QUOTES),							// d
+			'retweets' => html_entity_decode($entry->retweet_count,ENT_QUOTES),							// d
+			'updated_at' => date( "Y-m-d H:i:s", time()),													// s
+			'user_id' => html_entity_decode($entry->user->id,ENT_QUOTES),									// d
+			'user_name' => html_entity_decode(stripslashes($entry->user->name), ENT_QUOTES),				// s
+			'user_handle' => html_entity_decode(stripslashes($entry->user->screen_name), ENT_QUOTES),		// s
+			'user_image' => html_entity_decode(stripslashes($entry->user->profile_image_url), ENT_QUOTES),	// s
+			'hashtags' => html_entity_decode(stripslashes( serialize( $hashtags ) ), ENT_QUOTES),	// s
+			'symbols' => html_entity_decode(stripslashes( serialize( $symbols ) ), ENT_QUOTES),	// s
+			'user_mentions' => html_entity_decode(stripslashes( serialize( $user_mentions ) ), ENT_QUOTES),	// s
+			'urls' => html_entity_decode(stripslashes( serialize( $urls ) ), ENT_QUOTES),	// s
+			'media' => html_entity_decode(stripslashes( serialize( $media ) ), ENT_QUOTES),	// s
+			'hidden' => 0,																					// d
+		], [
+            'id' => $entry->id
+        ], [
+			'%d', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d'
+		], [
+            '%d'
+        ]);
 
-		$wpdb->update($this->api_table,
-			array(
-				'id' => $entry->id,																				// d
-				'tweet' => html_entity_decode(stripslashes($entry->full_text), ENT_QUOTES),							// s
-				'tweet_type' => $this->get_tweet_type( $entry->full_text ),						// s
-				'created_at' => date( "Y-m-d H:i:s", strtotime($entry->created_at)),							// s
-				'likes' => html_entity_decode($entry->favorite_count,ENT_QUOTES),							// d
-				'retweets' => html_entity_decode($entry->retweet_count,ENT_QUOTES),							// d
-				'updated_at' => date( "Y-m-d H:i:s", time()),													// s
-				'user_id' => html_entity_decode($entry->user->id,ENT_QUOTES),									// d
-				'user_name' => html_entity_decode(stripslashes($entry->user->name), ENT_QUOTES),				// s
-				'user_handle' => html_entity_decode(stripslashes($entry->user->screen_name), ENT_QUOTES),		// s
-				'user_image' => html_entity_decode(stripslashes($entry->user->profile_image_url), ENT_QUOTES),	// s
-				'hashtags' => html_entity_decode(stripslashes( serialize( $hashtags ) ), ENT_QUOTES),	// s
-				'symbols' => html_entity_decode(stripslashes( serialize( $symbols ) ), ENT_QUOTES),	// s
-				'user_mentions' => html_entity_decode(stripslashes( serialize( $user_mentions ) ), ENT_QUOTES),	// s
-				'urls' => html_entity_decode(stripslashes( serialize( $urls ) ), ENT_QUOTES),	// s
-				'media' => html_entity_decode(stripslashes( serialize( $media ) ), ENT_QUOTES),	// s
-				'hidden' => 0,																					// d
-			),
-			array(
-                'id' => $entry->id
-            ),
-			array(
-				'%d', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d'
-			),
-			array(
-                '%d'
-            )
-		);
-
-		return "updated";
+		return;
 	}
 
-	public function human_elapsed_time($datetime, $full = false) {
+
+	/**
+	 * Return formatted string of the difference between now and the given date
+	 *
+	 * @param  string  $datetime UTC time string
+	 * @param  boolean $full     Output full string
+	 * @return string            Formatted date
+	 */
+	public function human_elapsed_time( $datetime, $full = false )
+	{
 	    $now = new DateTime;
-	    $ago = new DateTime($datetime);
+	    $ago = new DateTime( $datetime );
 	    $diff = $now->diff($ago);
 
 	    $diff->w = floor($diff->d / 7);
 	    $diff->d -= $diff->w * 7;
 
-	    $string = array(
+	    $string = [
 	        'y' => 'year',
 	        'm' => 'month',
 	        'w' => 'week',
@@ -540,58 +670,71 @@ class atomic_api {
 	        'h' => 'hour',
 	        'i' => 'minute',
 	        's' => 'second',
-	    );
+	    ];
+
 	    foreach ($string as $k => &$v) {
-	        if ($diff->$k) {
+	        if ( $diff->$k ) {
 	            $v = $diff->$k . ' ' . $v . ($diff->$k > 1 ? 's' : '');
 	        } else {
 	            unset($string[$k]);
 	        }
 	    }
 
-	    if (!$full) $string = array_slice($string, 0, 1);
+	    if ( !$full ) {
+			$string = array_slice($string, 0, 1);
+		}
+
 	    return $string ? implode(', ', $string) . ' ago' : 'just now';
 	}
 
-	public function get_tweet_type( $tweet_text = "" ){
 
-		$tweet_type = "tweet";
-
-		if( substr( $tweet_text, 0, 3 ) === 'RT ' ) {
-			$tweet_type = "retweet";
+	/**
+	 * Perform naive analysis to guess the type of tweet
+	 *
+	 * @param  array $tweet Tweet
+	 * @return string		Tweet type
+	 */
+	public function get_tweet_type( $tweet )
+	{
+		if ( isset($tweet->retweeted_status) && !is_null($tweet->retweeted_status) ) {
+			$tweet_type = 'retweet';
+		} elseif ( isset($tweet->in_reply_to_status_id) && is_numeric($tweet->in_reply_to_status_id) ) {
+			$tweet_type = 'reply';
+		} else {
+			$tweet_type = 'tweet';
 		}
 
 		return $tweet_type;
-
 	}
 
-}
+} // atomic_api
 
 
 if ( defined( 'WP_CLI' ) && WP_CLI ) {
+
     /**
      * Sync tweet from Twitter API
      *
-     * wp atomicsmash create_dates_varient todayÊ
+     * wp atomicsmash create_dates_varient today
      */
-    class TWITTER_CLI extends WP_CLI_Command {
-        public function sync_tweets($order_id = ""){
+    class TWITTER_CLI extends WP_CLI_Command
+	{
+        public function sync_tweets( $order_id = '' )
+		{
 			global $twitterAPI;
 
 			$twitterAPI->pull();
 
 			WP_CLI::success( "Tweets synced" );
-
         }
     }
 
     WP_CLI::add_command( 'twitter', 'TWITTER_CLI' );
-
 }
 
 
 //Use this page as a ref: http://wpengineer.com/2426/wp_list_table-a-step-by-step-guide/
-//Need to sort pagination
+// TODO: Need to sort pagination
 
 class Atomic_Api_List_Table extends Twitter_Wordpress_List_Table {
 
