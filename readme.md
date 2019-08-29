@@ -44,18 +44,18 @@ if( isset( $twitterAPI ) ){
 
 	$tweets = $twitterAPI->get([
 		'results_per_page'	=> 4, 		// int
-		'order'				=> 'asc',	// 'asc|desc'
+		'order'			=> 'asc',	// 'asc|desc'
 		'tweet_type'		=> 'all'	// 'all|tweet|retweet|reply'
 	]);
 
 }
 ```
 
-| Parameter 			| Type 	 | Description 									|
-| :---					| :---:  | :--- 										|
-| `results_per_page` 	| int 	 | The number of results to show per page 		|
-| `order`				| string | `desc` for newest first, `asc` for oldest 	|
-| `tweet_type` 			| string | One of `all`, `tweet`, `retweet` or `reply`. What kinds of tweet should be returned. |
+| Parameter 		| Type 	 | Description 										|
+| :---			| :---:  | :--- 										|
+| `results_per_page` 	| int 	 | The number of results to show per page 						|
+| `order`		| string | `desc` for newest first, `asc` for oldest 						|
+| `tweet_type` 		| string | One of `all`, `tweet`, `retweet` or `reply`. What kind of tweets should be returned. |
 
 ## Background syncing
 
