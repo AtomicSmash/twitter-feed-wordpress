@@ -10,14 +10,16 @@ Author URI: n/a
 
 global $action, $wpdb, $twitterAPI;
 
-function register_session(){
-    if( !session_id() )
+function register_session() {
+    if ( !session_id() ) {
         session_start();
+    }
 }
+
 add_action('init','register_session');
 add_action( 'admin_menu', 'baseMenuPage' );
 
-if( file_exists( __DIR__ . '/vendor/autoload.php' ) ){
+if ( file_exists( __DIR__ . '/vendor/autoload.php' ) ) {
     require 'vendor/autoload.php';
 }
 
@@ -26,7 +28,7 @@ include('twitter.php');
 
 $twitterAPI = new atomic_api();
 
-register_activation_hook( __FILE__, array ( $twitterAPI , 'create_table' ) );
+register_activation_hook( __FILE__, [$twitterAPI , 'create_table'] );
 // register_deactivation_hook( __FILE__, array ( $twitterAPI, 'delete_table' ) );
 
 function baseMenuPage() {
@@ -35,4 +37,7 @@ function baseMenuPage() {
 
 };
 
-function twitter_page(){};
+
+function twitter_page() {
+    //
+};
