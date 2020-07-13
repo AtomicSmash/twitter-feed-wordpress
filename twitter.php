@@ -245,7 +245,12 @@ Class atomic_api
 		];
 
         // Merge query args with defaults, keeping only items that have keys in defaults
-        $query_args = array_intersect_key($query_args + $default_args, $default_args);
+		$query_args = array_intersect_key($query_args + $default_args, $default_args);
+
+		// Make tweet_type an array to deal with multiple options.
+		if (is_string($query_args['tweet_type'])) {
+			$query_args['tweet_type'] = array ($query_args['tweet_type']);
+		}
 
         // Pagination
         $this->resultsPerPage = is_numeric($query_args['results_per_page']) ? $query_args['results_per_page'] : $this->resultsPerPage;
@@ -290,8 +295,12 @@ Class atomic_api
             $whereSqlLines[] = '(' . implode(" OR ", $innerWhere) . ')';
         }
 
-		if ( $query_args['tweet_type'] != "all" ) {
-			$whereSqlLines[] = "( `tweet_type` = '". $query_args['tweet_type'] ."' )";
+		if ( $query_args['tweet_type'] !== array('all') ) {
+			$type_sql = array();
+			foreach ($query_args['tweet_type'] as $type){
+				$type_sql[] = "`tweet_type` = '". $type ."'";
+			}
+			$whereSqlLines[] = "( " . implode(' OR ', $type_sql) . " )";
 		}
 
         $whereSql = "";
