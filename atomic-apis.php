@@ -3,7 +3,7 @@
 Plugin Name: Twitter for WordPress
 Plugin URI: http://www.atomicsmash.co.uk
 Description: Pull from Twitter API and cache
-Version: 0.1.0
+Version: 0.2.0
 Author: Atomic Smash
 Author URI: n/a
 */
